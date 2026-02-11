@@ -11,7 +11,7 @@ st.set_page_config(page_title="Product List Sync (Graded Quantity)", layout="wid
 st.title("📦 Product List Synchronizer")
 
 LOCATION_MAPPING = {
-    # --- Exact / High Confidence Matches ---
+   
     "Aeon Bukit Indah":"Aeon Bukit Indah-JHR",
     "Aeon Tebrau City": "Aeon Tebrau-JHR",
     "Aeon Bandar Dato Onn": "Aeon Dato Onn-JHR",
@@ -333,3 +333,4 @@ if master_file and daily_file:
         output = io.BytesIO()
         wb.save(output)
         st.download_button("Download Updated File", output.getvalue(), f"Updated_File{selected_sheet}.xlsx")
+
