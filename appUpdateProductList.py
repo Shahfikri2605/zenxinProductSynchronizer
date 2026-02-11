@@ -35,6 +35,7 @@ LOCATION_MAPPING = {
     "Aeon Shah Alam Store": "Aeon Shah Alam-KUL",
     "Aeon Wangsa Maju" : "Aeon Wangsa Maju-KUL",
     "Aeon Maxvalue Desa Waterpark City" : "Aeon Maxvalu DPC-KUL",
+    "Aeon Big Sutera Mall JBA" : "AB Sutera Mall-JHR",
 
 
     "Urban Fresh MarketPlace": "Urban Fresh-KUL",
@@ -333,4 +334,5 @@ if master_file and daily_file:
         output = io.BytesIO()
         wb.save(output)
         st.download_button("Download Updated File", output.getvalue(), f"Updated_File{selected_sheet}.xlsx")
+
 
