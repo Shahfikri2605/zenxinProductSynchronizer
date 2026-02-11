@@ -262,7 +262,7 @@ if master_file and daily_file:
                     
                 elif c_idx == 9: # Prepared Diff
                     # Formula: =H{row}-F{row}
-                    cell.value = f"=H{r_idx}-F{r_idx}"
+                    cell.value = f"=H{r_idx}-G{r_idx}"
                     
                 else:
                     # Normal Value
