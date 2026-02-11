@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import openpyxl
 from openpyxl.styles import PatternFill
+from openpyxl.utils import get_column_letter 
 from copy import copy
 import io
 from collections import defaultdict
@@ -109,7 +110,6 @@ def clean_text_strict(text):
         text = text.replace(char, " ")
     return set(text.split())
 
-# --- 3. MATCHING FUNCTIONS ---
 def find_best_column_match_strict(sheet, header_row_idx, target_location):
     if target_location in LOCATION_MAPPING:
         target_location = LOCATION_MAPPING[target_location]
@@ -145,24 +145,16 @@ def find_best_product_match_100_percent(target_name, available_names):
                 best_match = name
     return best_match
 
-# --- 4. GRADE LOOKUP FUNCTION ---
 def get_default_qty_by_grade(sheet, col_idx, header_row_idx):
-    """
-    Looks at the row ABOVE the header (header_row_idx - 1) to find Grade A, B, or C.
-    """
     try:
-        # Excel rows are 1-based. If header is row 6, grade is row 5.
         grade_row = header_row_idx - 1
-        if grade_row < 1: return 10 # Fallback
-        
+        if grade_row < 1: return 10 
         cell_val = sheet.cell(row=grade_row, column=col_idx).value
         grade = str(cell_val).strip().upper()
-        
         if 'A' in grade: return 10
         if 'B' in grade: return 8
         if 'C' in grade: return 4
-        
-        return 10 # Default if no grade found
+        return 10 
     except:
         return 10
 
@@ -174,7 +166,7 @@ daily_file = c2.file_uploader("2. Daily Sheet (Target)", type=['xlsx'])
 report_file = c3.file_uploader("3. Request/Reduce Report", type=['xlsx', 'csv'])
 
 if master_file and daily_file:
-    
+    # Load Master
     df_master_raw = pd.read_excel(master_file, header=None)
     master_data = []
     for _, row in df_master_raw.iterrows():
@@ -183,14 +175,14 @@ if master_file and daily_file:
             master_data.append({'Item Code': code, 'Master_Name': name})
     df_master = pd.DataFrame(master_data).drop_duplicates('Item Code')
 
-    
+    # Load Daily
     wb = openpyxl.load_workbook(daily_file)
     selected_sheet = st.selectbox("Select Sheet to Process:", wb.sheetnames)
 
-    if st.button("Run Graded Sync"):
+    if st.button("Run Sync & Fix Formulas"):
         sheet = wb[selected_sheet]
         
-       
+        # Detect Header
         data_start_row = 7
         header_row = 6
         for row in sheet.iter_rows(min_row=1, max_row=20):
@@ -199,7 +191,11 @@ if master_file and daily_file:
                 data_start_row = row[0].row
                 header_row = data_start_row - 1
                 break
-       
+        
+        # Find last column for SUM formula
+        max_col_letter = get_column_letter(sheet.max_column)
+
+        # 1. READ ORIGINAL DATA & STYLES
         original_rows_data = {}
         default_style_row = [] 
 
@@ -219,6 +215,7 @@ if master_file and daily_file:
             if item_code not in original_rows_data:
                 original_rows_data[item_code] = row_styles
 
+        # 2. CREATE NEW ROW ORDER
         final_list_of_row_styles = []
         for m_code in df_master['Item Code']:
             if m_code in original_rows_data:
@@ -236,7 +233,8 @@ if master_file and daily_file:
             if d_code not in df_master['Item Code'].values:
                 final_list_of_row_styles.append(d_styles)
 
-        
+        # 3. WRITE BACK (WITH FORMULA FIX)
+        # Clear old data
         for row in sheet.iter_rows(min_row=data_start_row):
             for cell in row: cell.value = None
 
@@ -248,15 +246,37 @@ if master_file and daily_file:
             
             for c_idx, s in enumerate(styled_row, start=1):
                 cell = sheet.cell(row=r_idx, column=c_idx)
-                val = s['value']
-                cell.value = None if pd.isna(val) or str(val).lower() in ['nan', 'none'] else val
+                
+                # --- FORMULA INJECTION ---
+                # Col 6 = MY Used (Sum stores starting from J/10)
+                # Col 7 = Diff (Avail - Used)
+                # Col 9 = Prepared Diff (Prepared - Used)
+                
+                if c_idx == 6: # MY Used
+                    # Formula: =SUM(J{row}:LastCol{row})
+                    cell.value = f"=SUM(J{r_idx}:{max_col_letter}{r_idx})"
+                
+                elif c_idx == 7: # Diff
+                    # Formula: =E{row}-F{row}
+                    cell.value = f"=E{r_idx}-F{r_idx}"
+                    
+                elif c_idx == 9: # Prepared Diff
+                    # Formula: =H{row}-F{row}
+                    cell.value = f"=H{r_idx}-F{r_idx}"
+                    
+                else:
+                    # Normal Value
+                    val = s['value']
+                    cell.value = None if pd.isna(val) or str(val).lower() in ['nan', 'none'] else val
+                
+                # Restore Styles
                 cell.fill = s['fill']
                 cell.font = s['font']
                 cell.border = s['border']
                 cell.alignment = s['alignment']
                 cell.number_format = s['number_format']
 
-        
+        # 4. REPORT UPDATE
         if report_file:
             try:
                 if report_file.name.endswith('.csv'):
@@ -272,7 +292,7 @@ if master_file and daily_file:
 
                 available_products = list(product_row_map.keys())
 
-             
+                # Request Loop
                 df_req = df_req.dropna(subset=['Veggie Request'])
                 for _, row in df_req.iterrows():
                     loc_name = str(row['Location'])
@@ -283,9 +303,7 @@ if master_file and daily_file:
                     col_idx = find_best_column_match_strict(sheet, header_row, loc_name)
 
                     if official_prod and col_idx:
-                       
                         if pd.isna(qty) or str(qty).strip() == "":
-                            
                             qty_to_write = get_default_qty_by_grade(sheet, col_idx, header_row)
                         else:
                             qty_to_write = qty
@@ -298,7 +316,7 @@ if master_file and daily_file:
                         if not official_prod: st.warning(f"Request Mismatch: '{raw_prod_name}'")
                         elif not col_idx: st.warning(f"Location Mismatch: '{loc_name}'")
 
-               
+                # Reduce Loop
                 df_red = df_red.dropna(subset=['Veggie Reduce'])
                 for _, row in df_red.iterrows():
                     loc_name = str(row['Location.1'])
@@ -315,7 +333,7 @@ if master_file and daily_file:
                         if not official_prod: st.warning(f"Reduce Mismatch: '{raw_prod_name}'")
                         elif not col_idx: st.warning(f"Location Mismatch: '{loc_name}'")
                 
-                st.success("Process Complete! Quantities updated based on Store Grade (A=10, B=8, C=4).")
+                st.success("Process Complete! Formulas restored and Graded Quantities applied.")
 
             except Exception as e:
                 st.error(f"Report Error: {e}")
