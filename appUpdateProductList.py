@@ -73,7 +73,7 @@ LOCATION_MAPPING = {
     "TFM Pavilion Bukit Bintang-KUL": "TFM Pavilion Kuala Lumpur-KUL",
     "TFM Pavillion Embassy-KUL": "TFM Pavilion Embassy-KUL",
     "TFM WCity OUG Sales Gallery-KUL":"TFM WCity OUG Sales Gallery-KUL",
-    ""
+
     
     "Village Grocer - Avenue K Ampang": "VG Avenue K (VAK)-KUL",
     "Village Grocer - Cheras Leisure Mall (LGC)-KUL": "VG Leisure Mall (LGC)-KUL",
@@ -101,6 +101,7 @@ LOCATION_MAPPING = {
 def clean_text_strict(text):
     if not isinstance(text, str): return set()
     text = text.lower()
+    # Keep Country codes, remove generic units
     remove_list = ["-jhr", "-kul", "-png", "(m)", "packet", "pck", "pcs", "kg", "g", "ea", "org"]
     for word in remove_list:
         text = text.replace(f" {word} ", " ") 
@@ -111,23 +112,27 @@ def clean_text_strict(text):
     return set(text.split())
 
 def find_best_column_match_strict(sheet, header_row_idx, target_location):
+    """
+    100% Strict Location Matching.
+    1. Check Mapping.
+    2. Look for EXACT string in header (ignoring spaces).
+    """
+    # 1. Translate using Map
     if target_location in LOCATION_MAPPING:
-        target_location = LOCATION_MAPPING[target_location]
+        search_name = LOCATION_MAPPING[target_location].strip().lower()
+    else:
+        search_name = target_location.strip().lower()
 
-    target_words = clean_text_strict(target_location)
-    best_col = None
-    best_overlap = 0
-    
+    # 2. Iterate headers and find EXACT match
     for cell in sheet[header_row_idx]:
         if not cell.value: continue
-        col_words = clean_text_strict(str(cell.value))
-        intersection = target_words.intersection(col_words)
-        overlap_count = len(intersection)
         
-        if overlap_count > best_overlap:
-            best_overlap = overlap_count
-            best_col = cell.column
-    return best_col
+        header_val = str(cell.value).strip().lower()
+        
+        if header_val == search_name:
+            return cell.column
+            
+    return None # No match if not found exactly
 
 def find_best_product_match_100_percent(target_name, available_names):
     target_words = clean_text_strict(target_name)
@@ -234,7 +239,6 @@ if master_file and daily_file:
                 final_list_of_row_styles.append(d_styles)
 
         # 3. WRITE BACK (WITH FORMULA FIX)
-        # Clear old data
         for row in sheet.iter_rows(min_row=data_start_row):
             for cell in row: cell.value = None
 
@@ -248,28 +252,16 @@ if master_file and daily_file:
                 cell = sheet.cell(row=r_idx, column=c_idx)
                 
                 # --- FORMULA INJECTION ---
-                # Col 6 = MY Used (Sum stores starting from J/10)
-                # Col 7 = Diff (Avail - Used)
-                # Col 9 = Prepared Diff (Prepared - Used)
-                
                 if c_idx == 6: # MY Used
-                    # Formula: =SUM(J{row}:LastCol{row})
                     cell.value = f"=SUM(J{r_idx}:{max_col_letter}{r_idx})"
-                
                 elif c_idx == 7: # Diff
-                    # Formula: =E{row}-F{row}
                     cell.value = f"=E{r_idx}-F{r_idx}"
-                    
                 elif c_idx == 9: # Prepared Diff
-                    # Formula: =H{row}-F{row}
                     cell.value = f"=H{r_idx}-G{r_idx}"
-                    
                 else:
-                    # Normal Value
                     val = s['value']
                     cell.value = None if pd.isna(val) or str(val).lower() in ['nan', 'none'] else val
                 
-                # Restore Styles
                 cell.fill = s['fill']
                 cell.font = s['font']
                 cell.border = s['border']
