@@ -11,7 +11,7 @@ st.set_page_config(page_title="Product List Sync (Graded Quantity)", layout="wid
 st.title("📦 Product List Synchronizer")
 
 LOCATION_MAPPING = {
-   
+    # --- Exact / High Confidence Matches ---
     "Aeon Bukit Indah":"Aeon Bukit Indah-JHR",
     "Aeon Tebrau City": "Aeon Tebrau-JHR",
     "Aeon Bandar Dato Onn": "Aeon Dato Onn-JHR",
@@ -35,7 +35,6 @@ LOCATION_MAPPING = {
     "Aeon Shah Alam Store": "Aeon Shah Alam-KUL",
     "Aeon Wangsa Maju" : "Aeon Wangsa Maju-KUL",
     "Aeon Maxvalue Desa Waterpark City" : "Aeon Maxvalu DPC-KUL",
-    "Aeon Big Sutera Mall JBA" : "AB Sutera Mall-JHR",
 
 
     "Urban Fresh MarketPlace": "Urban Fresh-KUL",
@@ -277,6 +276,15 @@ if master_file and daily_file:
                 else:
                     df_report = pd.read_excel(report_file)
 
+                df_report.iloc[:, 0] = df_report.iloc[:, 0].ffill()
+                
+                # 2. Fill Right Location (Column 6) Down
+                if len(df_report.columns) > 6:
+                    # First, fill down existing values in col 6
+                    df_report.iloc[:, 6] = df_report.iloc[:, 6].ffill()
+                    # Second, if it's STILL blank (e.g. standard report style), fill from Col 0
+                    df_report.iloc[:, 6] = df_report.iloc[:, 6].fillna(df_report.iloc[:, 0])
+
                 df_req = df_report.iloc[:, 0:5].copy()
                 df_red = df_report.iloc[:, 6:11].copy()
                 
@@ -334,5 +342,3 @@ if master_file and daily_file:
         output = io.BytesIO()
         wb.save(output)
         st.download_button("Download Updated File", output.getvalue(), f"Updated_File{selected_sheet}.xlsx")
-
-
