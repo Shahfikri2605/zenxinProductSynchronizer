@@ -338,6 +338,7 @@ if master_file and daily_file:
                     if official_prod and col_idx:
                         for row_idx in product_row_map[official_prod]:
                             cell = sheet.cell(row=row_idx, column=col_idx)
+                            cell.value = 0
                             cell.fill = red_fill
                     else:
                         if not official_prod: st.warning(f"Reduce Mismatch: '{raw_prod_name}'")
