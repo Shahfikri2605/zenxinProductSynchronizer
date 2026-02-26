@@ -35,6 +35,9 @@ LOCATION_MAPPING = {
     "Aeon Shah Alam Store": "Aeon Shah Alam-KUL",
     "Aeon Wangsa Maju" : "Aeon Wangsa Maju-KUL",
     "Aeon Maxvalue Desa Waterpark City" : "Aeon Maxvalu DPC-KUL",
+    "Aeon Big Sutera Mall JB": "AB Sutera Mall-JHR",
+    "Aeon Kinta City (Old Ipoh)": "Aeon Old Ipoh-PRK",
+
 
 
     "Urban Fresh MarketPlace": "Urban Fresh-KUL",
@@ -68,7 +71,10 @@ LOCATION_MAPPING = {
     "Jaya Grocer - Cyberjaya": "JG Cyberjaya-KUL",
     "Jaya Grocer - Elmina Lakeside Mall-KUL" : "JG Elmina-KUL",
     "Jaya Grocer - Bukit Jelutong": "JG Jelutong-KUL",
+    "Jaya Grocer - Austin Heights" : "JG Austin Height-JHR",
+    "Jaya Grocer - Toppen Shopping Center-JHR" : "JG Toppen Shopping Centre-JHR ",
 
+    "Maslee Express Sdn Bhd (Seri Austin)" : "TP Seri Austin-JHR",
     
     "TFM Pavilion Bukit Bintang-KUL": "TFM Pavilion Kuala Lumpur-KUL",
     "TFM Pavillion Embassy-KUL": "TFM Pavilion Embassy-KUL",
@@ -94,6 +100,8 @@ LOCATION_MAPPING = {
     "Village Grocer - Tamarind Square Cyberjaya": "Village Grocer - Tamarind Square Cyberjaya",
     "Village Grocer - Myra Park Marketplace-KUL": "VG Myra Park Marketplace-KUL ",
     "Village Grocer - Puchong": "VG Puchong-KUL",
+    "Village Grocer - City Junction Penang" : "VG City Junction (VCJ)-PNG",
+    "Village Grocer - Paradigm Mall" : "VG Paradigm Mall (VPM)-JHR",
     
 }
 
