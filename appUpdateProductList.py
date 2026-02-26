@@ -37,6 +37,7 @@ LOCATION_MAPPING = {
     "Aeon Maxvalue Desa Waterpark City" : "Aeon Maxvalu DPC-KUL",
     "Aeon Big Sutera Mall JB": "AB Sutera Mall-JHR",
     "Aeon Kinta City (Old Ipoh)": "Aeon Old Ipoh-PRK",
+    "Aeon Queensbay" : "Aeon QB-PNG",
 
 
 
