@@ -7,7 +7,7 @@ from copy import copy
 import io
 from collections import defaultdict
 
-st.set_page_config(page_title="Product List Sync (Graded Quantity)", layout="wide")
+st.set_page_config(page_title="Product List Sync (Optional Master)", layout="wide")
 st.title("📦 Product List Synchronizer")
 
 LOCATION_MAPPING = {
@@ -39,10 +39,7 @@ LOCATION_MAPPING = {
     "Aeon Kinta City (Old Ipoh)": "Aeon Old Ipoh-PRK",
     "Aeon Queensbay" : "Aeon QB-PNG",
 
-
-
     "Urban Fresh MarketPlace": "Urban Fresh-KUL",
-
     
     "Bens - Batai": "VG Ben's Batai (BBT)-KUL",
     "Bens - IPC": "VG Ben's Ipc (BIP)-KUL",
@@ -80,7 +77,6 @@ LOCATION_MAPPING = {
     "TFM Pavilion Bukit Bintang-KUL": "TFM Pavilion Kuala Lumpur-KUL",
     "TFM Pavillion Embassy-KUL": "TFM Pavilion Embassy-KUL",
     "TFM WCity OUG Sales Gallery-KUL":"TFM WCity OUG Sales Gallery-KUL",
-
     
     "Village Grocer - Avenue K Ampang": "VG Avenue K (VAK)-KUL",
     "Village Grocer - Cheras Leisure Mall (LGC)-KUL": "VG Leisure Mall (LGC)-KUL",
@@ -103,9 +99,7 @@ LOCATION_MAPPING = {
     "Village Grocer - Puchong": "VG Puchong-KUL",
     "Village Grocer - City Junction Penang" : "VG City Junction (VCJ)-PNG",
     "Village Grocer - Paradigm Mall" : "VG Paradigm Mall (VPM)-JHR",
-    
 }
-
 
 def clean_text_strict(text):
     if not isinstance(text, str): return set()
@@ -175,19 +169,25 @@ def get_default_qty_by_grade(sheet, col_idx, header_row_idx):
 # --- MAIN APP ---
 
 c1, c2, c3 = st.columns(3)
-master_file = c1.file_uploader("1. Master List (Pivot)", type=['xlsx'])
+master_file = c1.file_uploader("1. Master List (Optional)", type=['xlsx'])
 daily_file = c2.file_uploader("2. Daily Sheet (Target)", type=['xlsx'])
 report_file = c3.file_uploader("3. Request/Reduce Report", type=['xlsx', 'csv'])
 
-if master_file or daily_file:
-    # Load Master
-    # df_master_raw = pd.read_excel(master_file, header=None)
-    # master_data = []
-    # for _, row in df_master_raw.iterrows():
-    #     code, name = str(row[0]).strip(), str(row[1]).strip()
-    #     if code.lower() not in ['nan', 'none', '']:
-    #         master_data.append({'Item Code': code, 'Master_Name': name})
-    # df_master = pd.DataFrame(master_data).drop_duplicates('Item Code')
+# CHECK: Only daily file is strictly required now
+if daily_file:
+    # 1. Load Master ONLY if it was uploaded
+    df_master = None
+    if master_file:
+        try:
+            df_master_raw = pd.read_excel(master_file, header=None)
+            master_data = []
+            for _, row in df_master_raw.iterrows():
+                code, name = str(row[0]).strip(), str(row[1]).strip()
+                if code.lower() not in ['nan', 'none', '']:
+                    master_data.append({'Item Code': code, 'Master_Name': name})
+            df_master = pd.DataFrame(master_data).drop_duplicates('Item Code')
+        except Exception as e:
+            st.error(f"Failed to read Master File: {e}")
 
     # Load Daily
     wb = openpyxl.load_workbook(daily_file)
@@ -211,6 +211,7 @@ if master_file or daily_file:
 
         # 1. READ ORIGINAL DATA & STYLES
         original_rows_data = {}
+        original_rows_list = [] # Store original order in case no Master is used
         default_style_row = [] 
 
         for row in sheet.iter_rows(min_row=data_start_row):
@@ -225,27 +226,36 @@ if master_file or daily_file:
                     'alignment': copy(cell.alignment),
                     'number_format': cell.number_format
                 })
+            
+            original_rows_list.append(row_styles) # Backup the original row order
+
             if not default_style_row: default_style_row = row_styles
             if item_code not in original_rows_data:
                 original_rows_data[item_code] = row_styles
 
         # 2. CREATE NEW ROW ORDER
         final_list_of_row_styles = []
-        for m_code in df_master['Item Code']:
-            if m_code in original_rows_data:
-                final_list_of_row_styles.append(original_rows_data[m_code])
-            else:
-                new_row_style = [copy(s) for s in default_style_row]
-                for i in range(len(new_row_style)): new_row_style[i]['value'] = None
-                new_row_style[0]['value'] = m_code 
-                new_row_style[1]['value'] = m_code
-                m_name = df_master[df_master['Item Code'] == m_code]['Master_Name'].values[0]
-                new_row_style[3]['value'] = m_name 
-                final_list_of_row_styles.append(new_row_style)
+        
+        if df_master is not None:
+            # Sync Mode: Master file provided, re-order rows
+            for m_code in df_master['Item Code']:
+                if m_code in original_rows_data:
+                    final_list_of_row_styles.append(original_rows_data[m_code])
+                else:
+                    new_row_style = [copy(s) for s in default_style_row]
+                    for i in range(len(new_row_style)): new_row_style[i]['value'] = None
+                    new_row_style[0]['value'] = m_code 
+                    new_row_style[1]['value'] = m_code
+                    m_name = df_master[df_master['Item Code'] == m_code]['Master_Name'].values[0]
+                    new_row_style[3]['value'] = m_name 
+                    final_list_of_row_styles.append(new_row_style)
 
-        for d_code, d_styles in original_rows_data.items():
-            if d_code not in df_master['Item Code'].values:
-                final_list_of_row_styles.append(d_styles)
+            for d_code, d_styles in original_rows_data.items():
+                if d_code not in df_master['Item Code'].values:
+                    final_list_of_row_styles.append(d_styles)
+        else:
+            # Direct Mode: No master file, keep original daily sheet order
+            final_list_of_row_styles = original_rows_list
 
         # 3. WRITE BACK (WITH FORMULA FIX)
         for row in sheet.iter_rows(min_row=data_start_row):
@@ -254,6 +264,7 @@ if master_file or daily_file:
         product_row_map = defaultdict(list) 
 
         for r_idx, styled_row in enumerate(final_list_of_row_styles, start=data_start_row):
+            # Assumes Product name is at column D (index 3)
             p_name = str(styled_row[3]['value']).strip()
             product_row_map[p_name].append(r_idx)
             
@@ -289,9 +300,7 @@ if master_file or daily_file:
                 
                 # 2. Fill Right Location (Column 6) Down
                 if len(df_report.columns) > 6:
-                    # First, fill down existing values in col 6
                     df_report.iloc[:, 6] = df_report.iloc[:, 6].ffill()
-                    # Second, if it's STILL blank (e.g. standard report style), fill from Col 0
                     df_report.iloc[:, 6] = df_report.iloc[:, 6].fillna(df_report.iloc[:, 0])
 
                 df_req = df_report.iloc[:, 0:5].copy()
@@ -352,5 +361,3 @@ if master_file or daily_file:
         output = io.BytesIO()
         wb.save(output)
         st.download_button("Download Updated File", output.getvalue(), f"Updated_File{selected_sheet}.xlsx")
-
-
