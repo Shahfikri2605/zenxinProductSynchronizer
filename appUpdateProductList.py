@@ -179,7 +179,7 @@ master_file = c1.file_uploader("1. Master List (Pivot)", type=['xlsx'])
 daily_file = c2.file_uploader("2. Daily Sheet (Target)", type=['xlsx'])
 report_file = c3.file_uploader("3. Request/Reduce Report", type=['xlsx', 'csv'])
 
-if master_file and daily_file:
+if master_file or daily_file:
     # Load Master
     df_master_raw = pd.read_excel(master_file, header=None)
     master_data = []
@@ -352,3 +352,4 @@ if master_file and daily_file:
         output = io.BytesIO()
         wb.save(output)
         st.download_button("Download Updated File", output.getvalue(), f"Updated_File{selected_sheet}.xlsx")
+
