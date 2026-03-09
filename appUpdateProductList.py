@@ -181,13 +181,13 @@ report_file = c3.file_uploader("3. Request/Reduce Report", type=['xlsx', 'csv'])
 
 if master_file or daily_file:
     # Load Master
-    df_master_raw = pd.read_excel(master_file, header=None)
-    master_data = []
-    for _, row in df_master_raw.iterrows():
-        code, name = str(row[0]).strip(), str(row[1]).strip()
-        if code.lower() not in ['nan', 'none', '']:
-            master_data.append({'Item Code': code, 'Master_Name': name})
-    df_master = pd.DataFrame(master_data).drop_duplicates('Item Code')
+    # df_master_raw = pd.read_excel(master_file, header=None)
+    # master_data = []
+    # for _, row in df_master_raw.iterrows():
+    #     code, name = str(row[0]).strip(), str(row[1]).strip()
+    #     if code.lower() not in ['nan', 'none', '']:
+    #         master_data.append({'Item Code': code, 'Master_Name': name})
+    # df_master = pd.DataFrame(master_data).drop_duplicates('Item Code')
 
     # Load Daily
     wb = openpyxl.load_workbook(daily_file)
@@ -352,4 +352,5 @@ if master_file or daily_file:
         output = io.BytesIO()
         wb.save(output)
         st.download_button("Download Updated File", output.getvalue(), f"Updated_File{selected_sheet}.xlsx")
+
 
